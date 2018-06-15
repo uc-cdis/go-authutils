@@ -3,6 +3,7 @@ package authutils
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -11,8 +12,9 @@ func validationError(reason string) error {
 	return errors.New(msg)
 }
 
-func fieldTypeError(field string, expectedType string) error {
-	msg := fmt.Sprintf("received value for field `%s` with incorrect type; expected %s\n", field, expectedType)
+func fieldTypeError(field string, value interface{}, expectedType string) error {
+	hasType := reflect.TypeOf(value)
+	msg := fmt.Sprintf("received value for field `%s` with incorrect type %s; expected %s\n", field, hasType, expectedType)
 	return errors.New(msg)
 }
 

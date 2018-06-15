@@ -57,31 +57,29 @@ func (application *JWTApplication) Decode(encodedToken EncodedToken) (*Claims, e
 	return &claims, nil
 }
 
-// ValidateRequest takes an http.Request and some expectations for the claims
-// in a token, looks for an encoded JWT in the `Authorization` header, and
-// validates and decodes the JWT header to return the claims it contains.
-func (application *JWTApplication) ValidateRequest(r *http.Request, expected *Expected) (*Claims, error) {
-	encodedToken := r.Header.Get("Authorization")
-	claims, err := application.Decode(encodedToken)
-	if err != nil {
-		return nil, err
-	}
-	err = expected.Validate(claims)
-	if err != nil {
-		return nil, err
-	}
-	return claims, nil
-}
-
+// checkExpiration validates the `exp` field in the claims.
 func checkExpiration(claims *Claims, now int64) error {
-	// now := time.Now().Unix()
+	// `now` should be set with something like this:
+	//
+	//     now := time.Now().Unix()
 	tokenExp, exists := (*claims)["exp"]
 	if !exists {
 		return missingField("exp")
 	}
-	exp, casted := tokenExp.(int64)
-	if !casted {
-		return fieldTypeError("exp", "int")
+	var exp int64
+	switch e := tokenExp.(type) {
+	case float32:
+		exp = int64(e)
+	case float64:
+		exp = int64(e)
+	case int:
+		exp = int64(e)
+	case int32:
+		exp = int64(e)
+	case int64:
+		exp = int64(e)
+	default:
+		return fieldTypeError("exp", tokenExp, "numeric type")
 	}
 	if exp < now {
 		return expired(exp)
@@ -89,6 +87,7 @@ func checkExpiration(claims *Claims, now int64) error {
 	return nil
 }
 
+// checkIssuer validates the `iss` field in the claims.
 func checkIssuer(claims *Claims, allowed []string) error {
 	tokenIss, exists := (*claims)["iss"]
 	if !exists {
@@ -96,7 +95,7 @@ func checkIssuer(claims *Claims, allowed []string) error {
 	}
 	iss, casted := tokenIss.(string)
 	if !casted {
-		return fieldTypeError("iss", "string")
+		return fieldTypeError("iss", iss, "string")
 	}
 	if !elem(iss, allowed) {
 		return invalidIssuer(iss)
@@ -104,14 +103,19 @@ func checkIssuer(claims *Claims, allowed []string) error {
 	return nil
 }
 
+// checkAudience validates the `aud` field in the claims.
 func checkAudience(claims *Claims, expected []string) error {
 	tokenAud, exists := (*claims)["aud"]
 	if !exists {
 		return missingField("aud")
 	}
-	aud, casted := tokenAud.([]string)
-	if !casted {
-		return fieldTypeError("iss", "[]string")
+	var aud []string
+	for _, value := range tokenAud.([]interface{}) {
+		valueString, casted := value.(string)
+		if !casted {
+			return fieldTypeError("aud", tokenAud, "[]string")
+		}
+		aud = append(aud, valueString)
 	}
 	for _, expectedAud := range expected {
 		if !elem(expectedAud, aud) {
@@ -129,7 +133,7 @@ func checkPurpose(claims *Claims, expected *string) error {
 		}
 		pur, casted := tokenPur.(string)
 		if !casted {
-			return fieldTypeError("pur", "string")
+			return fieldTypeError("pur", tokenPur, "string")
 		}
 		if *expected != tokenPur {
 			return invalidPurpose(pur, *expected)
@@ -196,4 +200,20 @@ func (expected *Expected) Validate(claims *Claims) error {
 	}
 
 	return nil
+}
+
+// ValidateRequest takes an http.Request and some expectations for the claims
+// in a token, looks for an encoded JWT in the `Authorization` header, and
+// validates and decodes the JWT header to return the claims it contains.
+func (application *JWTApplication) ValidateRequest(r *http.Request, expected *Expected) (*Claims, error) {
+	encodedToken := r.Header.Get("Authorization")
+	claims, err := application.Decode(encodedToken)
+	if err != nil {
+		return nil, err
+	}
+	err = expected.Validate(claims)
+	if err != nil {
+		return nil, err
+	}
+	return claims, nil
 }

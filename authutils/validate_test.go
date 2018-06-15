@@ -2,6 +2,8 @@ package authutils
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"testing"
 )
 
@@ -21,7 +23,7 @@ func TestMissingExpiration(t *testing.T) {
 }
 
 func TestDecodeToken(t *testing.T) {
-	application, _, encodedToken, _ := makeDefaultApplicationAndToken()
+	application, _, encodedToken, _ := defaultSetup()
 	claims, err := application.Decode(encodedToken)
 	if err != nil {
 		t.Fatalf("failed to decode valid token: %s", err)
@@ -35,8 +37,25 @@ func TestDecodeToken(t *testing.T) {
 	}
 }
 
+// TestValidateRequest tests creating an HTTP request with some valid claims
+// and then attempting to validate them using the default application setup.
 func TestValidateRequest(t *testing.T) {
-	// TODO
+	application, correctClaims, _, builder := defaultSetup()
+	expected := makeDefaultExpected()
+	header := makeAuthHeader(*correctClaims, builder)
+	exampleURL, err := url.Parse("https://example-service.net/endpoint")
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	request := http.Request{
+		Method: "GET",
+		URL:    exampleURL,
+		Header: header,
+	}
+	_, err = application.ValidateRequest(&request, &expected)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 }
 
 // benchmarkDecodeTokenOfLength takes a number of bytes as an argument and
@@ -57,7 +76,7 @@ func benchmarkDecodeTokenOfLength(bytes int) func(*testing.B) {
 }
 
 func TestMissing(t *testing.T) {
-	application, defaultClaims, _, builder := makeDefaultApplicationAndToken()
+	application, defaultClaims, _, builder := defaultSetup()
 	expected := makeDefaultExpected()
 
 	t.Run("exp", func(t *testing.T) {

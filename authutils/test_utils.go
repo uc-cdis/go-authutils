@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ func generateKeypair(keyID string) (*rsa.PrivateKey, *rsa.PublicKey) {
 	return privateKey, publicKey
 }
 
-func makeDefaultApplicationAndToken() (*JWTApplication, *Claims, EncodedToken, jwt.Builder) {
+func defaultSetup() (*JWTApplication, *Claims, EncodedToken, jwt.Builder) {
 	keyID := "default"
 	privateKey, publicKey := generateKeypair(keyID)
 
@@ -75,10 +76,11 @@ func publicKeyToJWK(keyID string, publicKey *rsa.PublicKey) jose.JSONWebKey {
 
 // makeDefaultClaims returns some basic example claims to put in a token.
 func makeDefaultClaims() Claims {
+	exp := int(time.Now().Unix() + 1000)
 	exampleClaims := Claims{
 		"aud": []string{"test"},
 		"iss": "https://example-iss.net",
-		"exp": time.Now().Unix() + 1000,
+		"exp": exp,
 		"pur": "access",
 	}
 
@@ -94,6 +96,19 @@ func makeDefaultExpected() Expected {
 		Purpose:    &purpose,
 	}
 	return expected
+}
+
+// makeAuthHeader takes some claims and a token builder and makes a fake http
+// header that has the encoded form of the token (created using the builder) in
+// the `Authorization` header.
+func makeAuthHeader(claims Claims, builder jwt.Builder) http.Header {
+	encodedToken, err := builder.Claims(claims).CompactSerialize()
+	if err != nil {
+		panic(err)
+	}
+	header := make(http.Header)
+	header.Add("Authorization", encodedToken)
+	return header
 }
 
 // generateTokenOfLength generates a valid encoded JWT with the specified
