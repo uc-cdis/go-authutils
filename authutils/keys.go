@@ -77,10 +77,10 @@ func (manager *KeysManager) Refresh() error {
 	// Parse the response JSON into a jose.JSONWebKeySet.
 	var keySet jose.JSONWebKeySet
 	err = json.NewDecoder(resp.Body).Decode(&keySet)
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
 
 	// Insert the keys parsed into the JWKS into the manager.
 	manager.Clear()

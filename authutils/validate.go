@@ -40,8 +40,10 @@ func (application *JWTApplication) Decode(encodedToken EncodedToken) (*Claims, e
 	// Get the key used to sign this token.
 	//
 	// There will be multiple headers in the case of multiple signatures. This
-	// doesn't apply to our use case, so just take the key ID from the first
-	// (and what should be the only) header.
+	// doesn't apply to our use case, so make sure there is only one signature.
+	if len(decodedToken.Headers) > 1 {
+		return nil, validationError("token has multiple headers; expected exactly 1")
+	}
 	header := decodedToken.Headers[0]
 	kid := header.KeyID
 	key, err := application.Keys.Lookup(kid)
@@ -97,7 +99,7 @@ func checkIssuer(claims *Claims, allowed []string) error {
 	if !casted {
 		return fieldTypeError("iss", iss, "string")
 	}
-	if !elem(iss, allowed) {
+	if !contains(iss, allowed) {
 		return invalidIssuer(iss)
 	}
 	return nil
@@ -110,15 +112,22 @@ func checkAudience(claims *Claims, expected []string) error {
 		return missingField("aud")
 	}
 	var aud []string
-	for _, value := range tokenAud.([]interface{}) {
-		valueString, casted := value.(string)
-		if !casted {
-			return fieldTypeError("aud", tokenAud, "[]string")
+	switch a := tokenAud.(type) {
+	case []string:
+		aud = a
+	case []interface{}:
+		for _, value := range a {
+			valueString, casted := value.(string)
+			if !casted {
+				return fieldTypeError("aud", tokenAud, "[]string")
+			}
+			aud = append(aud, valueString)
 		}
-		aud = append(aud, valueString)
+	default:
+		return fieldTypeError("aud", tokenAud, "[]string")
 	}
 	for _, expectedAud := range expected {
-		if !elem(expectedAud, aud) {
+		if !contains(expectedAud, aud) {
 			return missingAudience(expectedAud, aud)
 		}
 	}
@@ -135,7 +144,7 @@ func checkPurpose(claims *Claims, expected *string) error {
 		if !casted {
 			return fieldTypeError("pur", tokenPur, "string")
 		}
-		if *expected != tokenPur {
+		if *expected != pur {
 			return invalidPurpose(pur, *expected)
 		}
 	}
@@ -167,7 +176,7 @@ func (expected *Expected) selfValidate() error {
 
 	if expected.Purpose != nil {
 		// Must expect one of these given purposes.
-		if !elem(*expected.Purpose, ALLOWED_PURPOSES) {
+		if !contains(*expected.Purpose, ALLOWED_PURPOSES) {
 			allowed := strings.Join(ALLOWED_PURPOSES, ", ")
 			msg := fmt.Sprintf("purpose \"%s\" not in valid values: %s", *expected.Purpose, allowed)
 			return validationError(msg)

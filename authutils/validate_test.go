@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+// REQUIRED_CLAIMS lists the claims which absolutely must appear in a token,
+// whose absence will cause it not to validate.
 var REQUIRED_CLAIMS []string = []string{
 	"aud",
 	"exp",
@@ -16,11 +18,6 @@ var REQUIRED_CLAIMS []string = []string{
 /*
  * Look in `test_utils.go` for the utility functions that are used in this file.
  */
-
-// TestMissingExpiration verifies that if a token is missing the `exp` field
-// that it will not validate.
-func TestMissingExpiration(t *testing.T) {
-}
 
 func TestDecodeToken(t *testing.T) {
 	application, _, encodedToken, _ := defaultSetup()
@@ -75,56 +72,66 @@ func benchmarkDecodeTokenOfLength(bytes int) func(*testing.B) {
 	return runBenchmark
 }
 
-func TestMissing(t *testing.T) {
+// TestMissingRequiredClaim runs a table of subtests which check that if a
+// particular required claim (in `REQUIRED_CLAIMS`) is missing from the token,
+// then the validation raises an error.
+func TestMissingRequiredClaim(t *testing.T) {
 	application, defaultClaims, _, builder := defaultSetup()
 	expected := makeDefaultExpected()
 
-	t.Run("exp", func(t *testing.T) {
-		// Setup claims with missing field.
-		claims := make(Claims)
-		for k, v := range *defaultClaims {
-			claims[k] = v
-		}
-		delete(claims, "exp")
-		encodedTokenMissingExpiration, err := builder.Claims(claims).CompactSerialize()
-		if err != nil {
-			panic(err)
-		}
+	testMissingClaim := func(claim string) func(t *testing.T) {
+		return func(t *testing.T) {
+			// Setup claims with missing field.
+			claims := make(Claims)
+			for k, v := range *defaultClaims {
+				claims[k] = v
+			}
+			delete(claims, claim)
+			encodedTokenMissingExpiration, err := builder.Claims(claims).CompactSerialize()
+			if err != nil {
+				panic(err)
+			}
 
-		// Try to decode and then validate the claims and make sure there is an
-		// error.
-		decodedClaims, err := application.Decode(encodedTokenMissingExpiration)
-		if err != nil {
-			panic(err)
+			// Try to decode and then validate the claims and make sure there
+			// is an error.
+			decodedClaims, err := application.Decode(encodedTokenMissingExpiration)
+			if err != nil {
+				panic(err)
+			}
+			err = expected.Validate(decodedClaims)
+			if err == nil {
+				t.Fatal("token missing `exp` field validated successfully")
+			}
 		}
-		err = expected.Validate(decodedClaims)
+	}
+
+	// Run the test on all the required claims.
+	for _, requiredClaim := range REQUIRED_CLAIMS {
+		t.Run(requiredClaim, testMissingClaim(requiredClaim))
+	}
+}
+
+func TestPurpose(t *testing.T) {
+	// Test the case where the purpose exists and is one of the allowed values
+	// but not the one expected in the token.
+	t.Run("incorrect", func(t *testing.T) {
+		_, claims, _, _ := defaultSetup()
+		expected := makeDefaultExpected()
+		// Default purpose is "access".
+		wrongPurpose := "session"
+		expected.Purpose = &wrongPurpose
+		err := expected.Validate(claims)
 		if err == nil {
-			t.Fatal("token missing `exp` field validated successfully")
+			t.Fail()
 		}
 	})
 
-	t.Run("iss", func(t *testing.T) {
-		// Setup claims with missing field.
-		claims := make(Claims)
-		for k, v := range *defaultClaims {
-			claims[k] = v
-		}
-		delete(claims, "iss")
-		encodedTokenMissingIssuer, err := builder.Claims(claims).CompactSerialize()
-		if err != nil {
-			panic(err)
-		}
+	// Test the case that the purpose is not even one of the allowed values in
+	// `ALLOWED_PURPOSES`.
+	t.Run("invalid", func(t *testing.T) {
+	})
 
-		// Try to decode and then validate the claims and make sure there is an
-		// error.
-		decodedClaims, err := application.Decode(encodedTokenMissingIssuer)
-		if err != nil {
-			panic(err)
-		}
-		err = expected.Validate(decodedClaims)
-		if err == nil {
-			t.Fatal("token missing `iss` field validated successfully")
-		}
+	t.Run("missing", func(t *testing.T) {
 	})
 }
 
