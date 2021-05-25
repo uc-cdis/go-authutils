@@ -168,19 +168,10 @@ type Expected struct {
 	Purpose *string `json:"pur"`
 }
 
-// selfValidate ensures that the fields provided in Expected are valid. For
-// example, to validate some Claims the validator must identify with at least
-// one audience (`aud`) in the claims, so these may not be empty.
-//
 // See https://tools.ietf.org/html/rfc7519 for general information on JWTs and
 // basic validation, and see https://tools.ietf.org/html/rfc7523 for
 // considerations for validation specific to using JWTs for the OAuth2 flow.
 func (expected *Expected) selfValidate() error {
-	// Must expect at least one audience.
-	if len(expected.Audiences) == 0 {
-		return validationError("must validate against at least one audience")
-	}
-
 	if expected.Purpose != nil {
 		// Must expect one of these given purposes.
 		if !contains(*expected.Purpose, ALLOWED_PURPOSES) {
