@@ -10,7 +10,6 @@ import (
 // REQUIRED_CLAIMS lists the claims which absolutely must appear in a token,
 // whose absence will cause it not to validate.
 var REQUIRED_CLAIMS []string = []string{
-	"aud",
 	"exp",
 	"iss",
 }
