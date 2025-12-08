@@ -65,7 +65,10 @@ func benchmarkDecodeTokenOfLength(bytes int) func(*testing.B) {
 		application := makeApplicationWithKey(keyID, publicKey)
 		b.StartTimer()
 		for i := 0; i < b.N; i++ {
-			application.Decode(encodedToken)
+			_, err := application.Decode(encodedToken)
+			if err != nil {
+				panic(err)
+			}
 		}
 		b.StopTimer()
 	}
