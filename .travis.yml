@@ -2,7 +2,7 @@
 language: go
 
 go:
-    - "1.23"
+    - "1.17"
 
 # Restrict to cloning only 1 commit.
 git:
