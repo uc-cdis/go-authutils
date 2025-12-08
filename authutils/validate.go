@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
 )
 
@@ -32,7 +33,7 @@ func NewJWTApplication(jwkURL string) *JWTApplication {
 //
 // NOTE that this does NOT validate the claims, only the signature.
 func (application *JWTApplication) Decode(encodedToken EncodedToken) (*Claims, error) {
-	decodedToken, err := jwt.ParseSigned(encodedToken)
+	decodedToken, err := jwt.ParseSigned(encodedToken, []jose.SignatureAlgorithm{jose.RS256})
 	if err != nil {
 		return nil, err
 	}

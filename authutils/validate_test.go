@@ -1,6 +1,7 @@
 package authutils
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -75,7 +76,7 @@ func benchmarkDecodeTokenOfLength(bytes int) func(*testing.B) {
 // particular required claim (in `REQUIRED_CLAIMS`) is missing from the token,
 // then the validation raises an error.
 func TestMissingRequiredClaim(t *testing.T) {
-	application, defaultClaims, _, builder := defaultSetup()
+	application, defaultClaims, _, signer := defaultSetup()
 	expected := makeDefaultExpected()
 
 	testMissingClaim := func(claim string) func(t *testing.T) {
@@ -86,7 +87,15 @@ func TestMissingRequiredClaim(t *testing.T) {
 				claims[k] = v
 			}
 			delete(claims, claim)
-			encodedTokenMissingExpiration, err := builder.Claims(claims).CompactSerialize()
+			payload, err := json.Marshal(claims)
+			if err != nil {
+				panic(err)
+			}
+			jws, err := signer.Sign(payload)
+			if err != nil {
+				panic(err)
+			}
+			encodedTokenMissingExpiration, err := jws.CompactSerialize()
 			if err != nil {
 				panic(err)
 			}
