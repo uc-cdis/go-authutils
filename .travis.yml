@@ -1,7 +1,8 @@
+# TODO replace with CI workflow
 language: go
 
 go:
-    - "1.17"
+    - "1.23"
 
 # Restrict to cloning only 1 commit.
 git:
