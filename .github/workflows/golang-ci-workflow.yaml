@@ -13,4 +13,3 @@ jobs:
         uses: uc-cdis/.github/.github/actions/golang-ci@master
         with:
           GO_VERSION: "1.17"
-          COVERAGE_PROFILE_OUTPUT_LOCATION: ${{ env.COVERAGE_PROFILE_OUTPUT_LOCATION }}
