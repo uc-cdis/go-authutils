@@ -1,0 +1,15 @@
+name: Golang CI Workflow
+
+on: push
+
+jobs:
+  ci:
+    name: golang-ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Run tests, lint code, install goveralls
+        uses: uc-cdis/.github/.github/actions/golang-ci@master
+        with:
+          GO_VERSION: "1.17"

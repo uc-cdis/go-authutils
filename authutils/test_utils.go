@@ -3,14 +3,14 @@ package authutils
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	jose "gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
+	jose "github.com/go-jose/go-jose/v3"
 )
 
 // makeApplicationWithKey returns a JWTApplication initialized with the given
@@ -32,7 +32,7 @@ func generateKeypair(keyID string) (*rsa.PrivateKey, *rsa.PublicKey) {
 	return privateKey, publicKey
 }
 
-func defaultSetup() (*JWTApplication, *Claims, EncodedToken, jwt.Builder) {
+func defaultSetup() (*JWTApplication, *Claims, EncodedToken, jose.Signer) {
 	keyID := "default"
 	privateKey, publicKey := generateKeypair(keyID)
 
@@ -53,14 +53,20 @@ func defaultSetup() (*JWTApplication, *Claims, EncodedToken, jwt.Builder) {
 	}
 
 	claims := makeDefaultClaims()
-	encodedToken, err := jwt.Signed(signer).Claims(claims).CompactSerialize()
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		panic(err)
+	}
+	jws, err := signer.Sign(payload)
+	if err != nil {
+		panic(err)
+	}
+	encodedToken, err := jws.CompactSerialize()
 	if err != nil {
 		panic(err)
 	}
 
-	builder := jwt.Signed(signer)
-
-	return application, &claims, encodedToken, builder
+	return application, &claims, encodedToken, signer
 }
 
 // publicKeyToJWK basically just does a type conversion from an `rsa.PublicKey`
@@ -103,8 +109,17 @@ func makeDefaultExpected() Expected {
 // makeAuthHeader takes some claims and a token builder and makes a fake http
 // header that has the encoded form of the token (created using the builder) in
 // the `Authorization` header.
-func makeAuthHeader(claims Claims, builder jwt.Builder) http.Header {
-	encodedToken, err := builder.Claims(claims).CompactSerialize()
+func makeAuthHeader(claims Claims, signer jose.Signer) http.Header {
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		panic(err)
+	}
+	jws, err := signer.Sign(payload)
+	if err != nil {
+		panic(err)
+	}
+	encodedToken, err := jws.CompactSerialize()
+
 	if err != nil {
 		panic(err)
 	}
@@ -132,7 +147,16 @@ func generateTokenOfLength(bytes int, keyID string) (string, *rsa.PublicKey) {
 	}
 
 	claims := makeDefaultClaims()
-	currentResult, err := jwt.Signed(signer).Claims(claims).CompactSerialize()
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		panic(err)
+	}
+	jws, err := signer.Sign(payload)
+	if err != nil {
+		panic(err)
+	}
+	currentResult, err := jws.CompactSerialize()
+
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +178,15 @@ func generateTokenOfLength(bytes int, keyID string) (string, *rsa.PublicKey) {
 	// Put in the filler.
 	claims["filler"] = strings.Repeat("*", needDecodedLength)
 
-	result, err := jwt.Signed(signer).Claims(claims).CompactSerialize()
+	payload, err = json.Marshal(claims)
+	if err != nil {
+		panic(err)
+	}
+	jws, err = signer.Sign(payload)
+	if err != nil {
+		panic(err)
+	}
+	result, err := jws.CompactSerialize()
 	if err != nil {
 		panic(err)
 	}
