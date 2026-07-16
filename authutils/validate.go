@@ -12,7 +12,6 @@ import (
 // `fence`-specific: the `pur` field indicates the purpose for the token, which
 // may also be validated. If used, it must take one of these values.
 var ALLOWED_PURPOSES []string = []string{"id", "access", "refresh", "session", "api_key"}
-var DEFAULT_TOKEN_AUDIENCE = "gen3"
 
 // JWTApplication stores the state for an application needing to validate JWTs.
 type JWTApplication struct {
@@ -146,8 +145,7 @@ func checkScope(claims *Claims, expected []string) error {
 func checkAudience(claims *Claims, expected []string) error {
 	// if token has an aud field but no audiences are expected this is fine
 	if len(expected) == 0 {
-		// Fallback to DEFAULT_TOKEN_AUDIENCE if no JWT audience is provided.
-		expected = []string{DEFAULT_TOKEN_AUDIENCE}
+		return nil
 	}
 	tokenAud, exists := (*claims)["aud"]
 	if !exists {
