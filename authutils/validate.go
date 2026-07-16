@@ -12,6 +12,7 @@ import (
 // `fence`-specific: the `pur` field indicates the purpose for the token, which
 // may also be validated. If used, it must take one of these values.
 var ALLOWED_PURPOSES []string = []string{"id", "access", "refresh", "session", "api_key"}
+var DEFAULT_TOKEN_AUDIENCE = "gen3"
 
 // JWTApplication stores the state for an application needing to validate JWTs.
 type JWTApplication struct {
@@ -141,6 +142,40 @@ func checkScope(claims *Claims, expected []string) error {
 	return nil
 }
 
+// checkAudience validates the `aud` field in the claims.
+func checkAudience(claims *Claims, expected []string) error {
+	// if token has an aud field but no audiences are expected this is fine
+	if len(expected) == 0 {
+		// Fallback to DEFAULT_TOKEN_AUDIENCE if no JWT audience is provided.
+		expected = []string{DEFAULT_TOKEN_AUDIENCE}
+	}
+	tokenAud, exists := (*claims)["aud"]
+	if !exists {
+		return missingField("aud")
+	}
+	var aud []string
+	switch a := tokenAud.(type) {
+	case []string:
+		aud = a
+	case []interface{}:
+		for _, value := range a {
+			valueString, casted := value.(string)
+			if !casted {
+				return fieldTypeError("aud", tokenAud, "[]string")
+			}
+			aud = append(aud, valueString)
+		}
+	default:
+		return fieldTypeError("aud", tokenAud, "[]string")
+	}
+	for _, expectedAud := range expected {
+		if !contains(expectedAud, aud) {
+			return missingAudience(expectedAud, aud)
+		}
+	}
+	return nil
+}
+
 func checkPurpose(claims *Claims, expected *string) error {
 	if expected != nil {
 		tokenPur, exists := (*claims)["pur"]
@@ -161,6 +196,8 @@ func checkPurpose(claims *Claims, expected *string) error {
 // Expected represents some values which are used to validate the claims in a
 // token.
 type Expected struct {
+	// Audiences is a list of expected receivers or uses of the token.
+	Audiences []string `json:"aud"`
 	// Scopes is a list of expected uses of the token.
 	Scopes []string `json:"scope"`
 	// Expiration is the Unix timestamp at which the token becomes expired.
@@ -208,6 +245,9 @@ func (expected *Expected) Validate(claims *Claims) error {
 		return err
 	}
 	if err := checkScope(claims, expected.Scopes); err != nil {
+		return err
+	}
+	if err := checkAudience(claims, expected.Audiences); err != nil {
 		return err
 	}
 	if err := checkPurpose(claims, expected.Purpose); err != nil {

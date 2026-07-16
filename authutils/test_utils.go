@@ -84,6 +84,7 @@ func publicKeyToJWK(keyID string, publicKey *rsa.PublicKey) jose.JSONWebKey {
 func makeDefaultClaims() Claims {
 	exp := int(time.Now().Unix() + 1000)
 	exampleClaims := Claims{
+		"aud":   []string{DEFAULT_TOKEN_AUDIENCE},
 		"scope": []string{"test"},
 		"iss":   "https://example-iss.net",
 		"exp":   exp,
@@ -98,6 +99,7 @@ func makeDefaultExpected() Expected {
 	now := time.Now().Unix()
 	exp := &now
 	expected := Expected{
+		Audiences:  []string{DEFAULT_TOKEN_AUDIENCE},
 		Scopes:     []string{"test"},
 		Issuers:    []string{"https://example-iss.net"},
 		Expiration: exp,
