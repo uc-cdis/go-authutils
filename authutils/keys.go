@@ -72,11 +72,11 @@ func (manager *KeysManager) Refresh() error {
 	if err != nil {
 		return fmt.Errorf("couldn't get keys from %s: %s", manager.URL, err.Error())
 	}
+	defer func() { _ = resp.Body.Close() }()
 
 	// Parse the response JSON into a jose.JSONWebKeySet.
 	var keySet jose.JSONWebKeySet
 	err = json.NewDecoder(resp.Body).Decode(&keySet)
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
