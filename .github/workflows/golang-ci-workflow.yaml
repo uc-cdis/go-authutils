@@ -12,4 +12,4 @@ jobs:
       - name: Run tests, lint code, install goveralls
         uses: uc-cdis/.github/.github/actions/golang-ci@master
         with:
-          GO_VERSION: "1.17"
+          GO_VERSION: "1.26.4"
