@@ -143,9 +143,8 @@ func checkScope(claims *Claims, expected []string) error {
 
 // checkAudience validates the `aud` field in the claims.
 func checkAudience(claims *Claims, expected []string) error {
-	// if token has an aud field but no audiences are expected this is fine
 	if len(expected) == 0 {
-		return nil
+		return validationError("no expected audience was provided")
 	}
 	tokenAud, exists := (*claims)["aud"]
 	if !exists {
