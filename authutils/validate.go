@@ -168,11 +168,11 @@ func checkAudience(claims *Claims, expected []string) error {
 	fmt.Println("checkAudience aud", aud)
 	for _, expectedAud := range expected {
 		fmt.Println("checkAudience expectedAud", expectedAud, contains(expectedAud, aud))
-		if !contains(expectedAud, aud) {
-			return missingAudience([]string{expectedAud}, aud)
+		if contains(expectedAud, aud) {
+			return nil
 		}
 	}
-	return nil
+	return missingAudience(expected, aud)
 }
 
 func checkPurpose(claims *Claims, expected *string) error {
