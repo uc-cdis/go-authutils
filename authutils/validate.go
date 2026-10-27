@@ -165,12 +165,14 @@ func checkAudience(claims *Claims, expected []string) error {
 	default:
 		return fieldTypeError("aud", tokenAud, "[]string")
 	}
+	fmt.Println("checkAudience aud", aud)
 	for _, expectedAud := range expected {
-		if contains(expectedAud, aud) {
-			return nil
+		fmt.Println("checkAudience expectedAud", expectedAud, contains(expectedAud, aud))
+		if !contains(expectedAud, aud) {
+			return missingAudience([]string{expectedAud}, aud)
 		}
 	}
-	return missingAudience(expected, aud)
+	return nil
 }
 
 func checkPurpose(claims *Claims, expected *string) error {
