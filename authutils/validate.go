@@ -6,12 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jose/go-jose/v3/jwt"
+	jose "github.com/go-jose/go-jose/v4"
+	"github.com/go-jose/go-jose/v4/jwt"
 )
 
 // `fence`-specific: the `pur` field indicates the purpose for the token, which
 // may also be validated. If used, it must take one of these values.
 var ALLOWED_PURPOSES []string = []string{"id", "access", "refresh", "session", "api_key"}
+
+// allowedSignatureAlgorithms lists the JWS algorithms accepted when parsing
+// tokens. go-jose v4 requires this list to guard against algorithm-confusion
+// attacks; fence signs tokens with RS256.
+var allowedSignatureAlgorithms = []jose.SignatureAlgorithm{jose.RS256}
 
 // JWTApplication stores the state for an application needing to validate JWTs.
 type JWTApplication struct {
@@ -32,7 +38,7 @@ func NewJWTApplication(jwkURL string) *JWTApplication {
 //
 // NOTE that this does NOT validate the claims, only the signature.
 func (application *JWTApplication) Decode(encodedToken EncodedToken) (*Claims, error) {
-	decodedToken, err := jwt.ParseSigned(encodedToken)
+	decodedToken, err := jwt.ParseSigned(encodedToken, allowedSignatureAlgorithms)
 	if err != nil {
 		return nil, err
 	}

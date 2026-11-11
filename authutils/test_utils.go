@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	jose "github.com/go-jose/go-jose/v3"
+	jose "github.com/go-jose/go-jose/v4"
 )
 
 // makeApplicationWithKey returns a JWTApplication initialized with the given

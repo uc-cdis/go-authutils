@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	jose "github.com/go-jose/go-jose/v3"
+	jose "github.com/go-jose/go-jose/v4"
 )
 
 // KeysManager handles the storage and updating of a set of JWKs. The
